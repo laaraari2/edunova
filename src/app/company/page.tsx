@@ -120,7 +120,11 @@ export default function SuperAdminDashboard() {
   const supabase = useMemo(() => createClient(), []);
 
   const [sidebarItem, setSidebarItem] = useState("dashboard");
-  const [showModal, setShowModal] = useState(false);
+const [showModal, setShowModal] = useState(false);
+
+useEffect(() => {
+  console.log("🪟 showModal =", showModal);
+}, [showModal]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -866,19 +870,20 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <Button
-                  onClick={() => {
-                    setError(null);
-                    setSuccess(null);
-                    setManagerLoginLink(null);
-                    resetForm();
-                    setShowModal(true);
-                  }}
-                  className="h-10 gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-5 text-[13px] font-bold text-white shadow-lg shadow-sky-200 transition-all hover:-translate-y-0.5 hover:from-sky-400 hover:to-blue-500 hover:shadow-sky-300"
-                >
-                  <Plus className="h-4 w-4" />
-
-                  Nouvelle Institution
-                </Button>
+  type="button"
+  onClick={() => {
+    console.log("🟢 CLICK NOUVELLE INSTITUTION");
+    setError(null);
+    setSuccess(null);
+    setManagerLoginLink(null);
+    resetForm();
+    setShowModal(true);
+  }}
+  className="relative z-[100] h-10 gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-5 text-[13px] font-bold text-white shadow-lg shadow-sky-200 transition-all hover:-translate-y-0.5 hover:from-sky-400 hover:to-blue-500 hover:shadow-sky-300"
+>
+  <Plus className="h-4 w-4" />
+  Nouvelle Institution
+</Button>
               </div>
             </div>
 
