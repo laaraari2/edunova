@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 
 function slugify(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -15,14 +14,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Configuration Supabase manquante." }, { status: 500 });
     }
 
-    const cookieStore = await cookies();
+    const authorization = request.headers.get("authorization");
+    if (!authorization?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Session utilisateur manquante." }, { status: 401 });
+    }
+
+    const accessToken = authorization.slice("Bearer ".length);
     const supabaseUser = createClient(url, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
-      global: {
-        headers: {
-          Cookie: cookieStore.toString(),
-        },
-      },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
