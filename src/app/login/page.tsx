@@ -15,7 +15,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [institutionHint, setInstitutionHint] = useState<string | null>(null);
 
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
 
@@ -23,7 +22,6 @@ export default function LoginPage() {
     e.preventDefault();
 
     setError("");
-    setInstitutionHint(searchParams?.get("institution") || null);
 
     if (!email.trim() || !password) {
       setError("Veuillez saisir votre email et votre mot de passe.");
