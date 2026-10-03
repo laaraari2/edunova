@@ -380,6 +380,18 @@ function SetupWizard() {
       }
 
       // 3. Mise à jour de l'établissement
+      const { data: dataBeforeUpdate } = await supabase
+        .from("establishments")
+        .select("id, company_id, name, slug, city, address, phone, email, status, setup_completed, logo_url, enabled_cycles, created_at, updated_at")
+        .eq("id", institution.id)
+        .maybeSingle();
+
+      if (dataBeforeUpdate?.setup_completed) {
+        alert("La configuration de cet établissement est déjà terminée.");
+        router.replace(`/school?institution=${encodeURIComponent(institution.slug)}`);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("establishments")
         .update({
