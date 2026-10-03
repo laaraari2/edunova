@@ -446,9 +446,17 @@ export default function SuperAdminDashboard() {
 
     setSaving(true);
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error("Votre session a expiré. Reconnectez-vous.");
+      }
+
       const response = await fetch("/api/auth/create-manager", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           institutionName: name,
           city: institutionCity,
