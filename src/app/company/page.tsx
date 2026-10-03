@@ -430,205 +430,50 @@ export default function SuperAdminDashboard() {
     setError(null);
     setSuccess(null);
     setManagerLoginLink(null);
-
     const name = institutionName.trim();
     const institutionCity = city.trim();
-
     const mName = managerName.trim();
     const mEmail = managerEmail.trim();
 
-    if (!name) {
-      setError("Le nom de l'établissement est obligatoire.");
+    if (!name || !institutionCity || !mName || !mEmail || !managerPassword) {
+      setError("Nom, ville, nom du directeur, email et mot de passe sont obligatoires.");
       return;
     }
-
-    if (!institutionCity) {
-      setError("La ville est obligatoire.");
-      return;
-    }
-
-    if (!mName || !mEmail || !managerPassword) {
-      setError(
-        "Les informations du directeur sont obligatoires."
-      );
-      return;
-    }
-
     if (managerPassword.length < 6) {
-      setError(
-        "Le mot de passe du directeur doit contenir au moins 6 caractères."
-      );
+      setError("Le mot de passe du directeur doit contenir au moins 6 caractères.");
       return;
     }
 
     setSaving(true);
-
     try {
-      /*
-       * 1. Vérifier la session
-       */
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error(
-          "Votre session a expiré. Reconnectez-vous."
-        );
-      }
-
-      /*
-       * 2. Vérifier OWNER
-       */
-      console.log("👑 Creating institution as owner:", user.id);
-
-      const {
-        data: membership,
-        error: membershipError,
-      } = await supabase
-        .from("company_members")
-        .select("company_id, role")
-        .eq("user_id", user.id)
-        .eq("role", "owner")
-        .maybeSingle();
-
-      if (membershipError) {
-        throw new Error(membershipError.message);
-      }
-
-      if (!membership) {
-        throw new Error(
-          "Vous n'avez pas les droits nécessaires pour créer une institution."
-        );
-      }
-
-      /*
-       * 3. Générer le slug
-       */
-      const baseSlug =
-        slugify(name) ||
-        `institution-${Date.now().toString()}`;
-
-      const slug = `${baseSlug}-${Math.random()
-        .toString(36)
-        .slice(2, 7)}`;
-
-      /*
-       * 4. Créer l'établissement
-       */
-      console.log("🏫 Creating establishment:", {
-        company_id: membership.company_id,
-        name,
-        slug,
+      const response = await fetch("/api/auth/create-manager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          institutionName: name,
+          city: institutionCity,
+          email: email.trim() || null,
+          phone: phone.trim() || null,
+          address: address.trim() || null,
+          status,
+          managerName: mName,
+          managerEmail: mEmail,
+          managerPassword,
+        }),
       });
 
-      const {
-        data: newEstablishment,
-        error: insertError,
-      } = await supabase
-        .from("establishments")
-        .insert({
-          company_id: membership.company_id,
-          name,
-          slug,
-          city: institutionCity,
-          address: address.trim() || null,
-          phone: phone.trim() || null,
-          email: email.trim() || null,
-          status,
-          setup_completed: false,
-        })
-        .select("id, slug")
-        .single();
-
-      if (insertError || !newEstablishment) {
-        throw new Error(
-          insertError?.message ||
-            "Erreur lors de la création de l'établissement."
-        );
-      }
-
-      console.log(
-        "✅ Establishment created:",
-        newEstablishment
-      );
-
-      /*
-       * 5. Lien de connexion du directeur
-       */
-      const managerLink =
-        `${window.location.origin}/login?institution=` +
-        encodeURIComponent(newEstablishment.slug);
-
-      /*
-       * 6. Création du compte directeur
-       *
-       * Important :
-       * Cette opération passe par notre API serveur.
-       * On ne fait PAS auth.signUp() directement depuis
-       * le navigateur pour ne pas remplacer la session OWNER.
-       */
-      console.log("👨‍🏫 Creating manager account...");
-
-      const response = await fetch(
-        "/api/auth/create-manager",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            establishmentId: newEstablishment.id,
-            managerName: mName,
-            managerEmail: mEmail,
-            managerPassword,
-          }),
-        }
-      );
-
       const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Erreur lors de la création de l'institution.");
 
-      console.log(
-        "👨‍🏫 Create manager response:",
-        result
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-            "Erreur lors de la création du compte directeur."
-        );
-      }
-
-      /*
-       * 7. Succès
-       */
+      const managerLink = result.loginLink ? `${window.location.origin}${result.loginLink}` : null;
       setManagerLoginLink(managerLink);
-
-      setSuccess(
-        "L'institution et le compte directeur ont été créés avec succès. Voici le lien de connexion pour le directeur."
-      );
-
+      setSuccess("L'institution et le compte directeur ont été créés. Le directeur peut maintenant utiliser le lien et ses identifiants.");
       setShowModal(false);
       resetForm();
-
-      /*
-       * 8. Reload des institutions
-       */
       await loadDashboard();
     } catch (err) {
-      console.error(
-        "🔴 handleCreateInstitution error:",
-        err
-      );
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur est survenue."
-      );
+      console.error("🔴 handleCreateInstitution error:", err);
+      setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
       setSaving(false);
     }
@@ -641,7 +486,7 @@ export default function SuperAdminDashboard() {
 
   async function copyInstitutionLink(slug: string) {
     const link =
-      `${window.location.origin}/setup?institution=` +
+      `${window.location.origin}/login?institution=` +
       encodeURIComponent(slug);
 
     try {
