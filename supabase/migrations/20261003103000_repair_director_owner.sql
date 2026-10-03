@@ -33,10 +33,6 @@ BEGIN
     WHERE id = v_company_id;
   END IF;
 
-  DELETE FROM public.company_members
-  WHERE company_id = v_company_id
-    AND user_id <> v_owner_id;
-
   INSERT INTO public.company_members (company_id, user_id, role)
   VALUES (v_company_id, v_owner_id, 'owner')
   ON CONFLICT (company_id, user_id)
