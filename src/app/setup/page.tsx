@@ -122,11 +122,36 @@ function SetupWizard() {
       }
 
       try {
-        console.log("🏫 Chargement établissement:", institutionSlug);
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          setInstitutionError("Votre session a expiré. Veuillez vous reconnecter.");
+          setLoadingInstitution(false);
+          return;
+        }
+
+        const { data: managerRows, error: managerError } = await supabase.rpc(
+          "get_user_establishment",
+          { p_user_id: user.id }
+        );
+
+        if (managerError) {
+          console.error("❌ Vérification manager:", managerError);
+          setInstitutionError("Impossible de vérifier votre accès à cet établissement.");
+          setLoadingInstitution(false);
+          return;
+        }
+
+        const manager = Array.isArray(managerRows) ? managerRows[0] : null;
+        if (!manager || manager.establishment_slug !== institutionSlug) {
+          setInstitutionError("Accès refusé : cet espace est réservé au directeur de l'établissement.");
+          setLoadingInstitution(false);
+          return;
+        }
 
         const { data, error } = await supabase
           .from("establishments")
-          .select("id, company_id, name, slug, city, address, phone, email, status, setup_completed, created_at, updated_at")
+          .select("id, company_id, name, slug, city, address, phone, email, status, setup_completed, logo_url, enabled_cycles, created_at, updated_at")
           .eq("slug", institutionSlug)
           .maybeSingle();
 
@@ -146,8 +171,6 @@ function SetupWizard() {
         }
 
         const item = data as Establishment;
-        console.log("✅ Établissement chargé:", item);
-
         setInstitution(item);
         setSchoolName(item.name);
         setSetupCompleted(Boolean(item.setup_completed));
@@ -357,6 +380,18 @@ function SetupWizard() {
       }
 
       // 3. Mise à jour de l'établissement
+      const { data: dataBeforeUpdate } = await supabase
+        .from("establishments")
+        .select("id, company_id, name, slug, city, address, phone, email, status, setup_completed, logo_url, enabled_cycles, created_at, updated_at")
+        .eq("id", institution.id)
+        .maybeSingle();
+
+      if (dataBeforeUpdate?.setup_completed) {
+        alert("La configuration de cet établissement est déjà terminée.");
+        router.replace(`/school?institution=${encodeURIComponent(institution.slug)}`);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("establishments")
         .update({

@@ -16,6 +16,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+
   async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
